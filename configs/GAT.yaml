@@ -1,0 +1,13 @@
+Cora:
+  epochs: 3000
+  num_layers: 2
+  hid_dim: 64
+  dropout: 0.5
+  learning_rate: 0.01
+  weight_decay: 0.00005
+  proj: False
+  monitor: f1
+  patience: 300
+  head: 8
+  add_self_loops: True
+  

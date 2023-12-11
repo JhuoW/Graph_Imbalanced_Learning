@@ -1,0 +1,70 @@
+Cora:
+  seed: 39788
+  learning_rate: 0.0005
+  hid_dim: 128
+  proj_hidden_dim: 128
+  activation: 'relu'
+  base_model: 'GCNConv'
+  num_layers: 2
+  drop_edge_rate_1: 0.2
+  drop_edge_rate_2: 0.4
+  drop_feature_rate_1: 0.3
+  drop_feature_rate_2: 0.4
+  tau: 0.4
+  num_epochs: 200
+  weight_decay: 0.00001
+  fix_minority: True
+  BalanceMLP:
+    epochs: 400
+    lr: 0.01
+    weight_decay: 0
+    dropout: 0.5
+    num_proj_layers: 2
+    proj_hid_dim: 64
+
+
+CiteSeer:
+  seed: 38108
+  learning_rate: 0.001
+  hid_dim: 256
+  proj_hidden_dim: 256
+  activation: 'prelu'
+  base_model: 'GCNConv'
+  num_layers: 2
+  drop_edge_rate_1: 0.2
+  drop_edge_rate_2: 0.0
+  drop_feature_rate_1: 0.3
+  drop_feature_rate_2: 0.2
+  tau: 0.9
+  num_epochs: 200
+  weight_decay: 0.00001
+PubMed:
+  seed: 23344
+  learning_rate: 0.001
+  hid_dim: 256
+  proj_hidden_dim: 256
+  activation: 'relu'
+  base_model: 'GCNConv'
+  num_layers: 2
+  drop_edge_rate_1: 0.4
+  drop_edge_rate_2: 0.1
+  drop_feature_rate_1: 0.0
+  drop_feature_rate_2: 0.2
+  tau: 0.7
+  num_epochs: 1500
+  weight_decay: 0.00001
+DBLP:
+  seed: 83521
+  learning_rate: 0.001
+  hid_dim: 256
+  proj_hidden_dim: 256
+  activation: 'relu'
+  base_model: 'GCNConv'
+  num_layers: 2
+  drop_edge_rate_1: 0.1
+  drop_edge_rate_2: 0.4
+  drop_feature_rate_1: 0.1
+  drop_feature_rate_2: 0.0
+  tau: 0.7
+  num_epochs: 1000
+  weight_decay: 0.00001
