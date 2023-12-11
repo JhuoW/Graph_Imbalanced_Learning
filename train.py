@@ -11,15 +11,16 @@ import torch_geometric.transforms as T
 import torch.nn.functional as F
 import torch.nn as nn
 from torch_geometric.datasets import CitationFull
-from torch_geometric.utils import dropout_adj
 from torch_geometric.nn import GCNConv
 from dataset import *
-from SSL.GRACE import Encoder, Model, drop_feature
+from SSL.GRACE import Encoder, Model
+from SSL.CCASSG import CCA_SSG
 from eval import label_classification
+from torch_geometric.utils import add_self_loops
 import numpy as np
 from balance import balance_embedding_mean_cls, balance_embedding_assign, BalanceMLP
 from sklearn.metrics import f1_score, balanced_accuracy_score
-
+from aug import augment_GRACE, augment_CCA
 
 def get_dataset(path, name, split, imb_ratio, fix_minority):
     assert name in ['Cora', 'CiteSeer', 'PubMed', 'DBLP']
@@ -31,17 +32,32 @@ def get_dataset(path, name, split, imb_ratio, fix_minority):
 
     return dataset 
 
-def train(model: Model, x, edge_index):
+def train(model, x, edge_index):
     model.train()
     optimizer.zero_grad()
-    edge_index_1 = dropout_adj(edge_index, p=drop_edge_rate_1)[0]
-    edge_index_2 = dropout_adj(edge_index, p=drop_edge_rate_2)[0]
-    x_1 = drop_feature(x, drop_feature_rate_1)
-    x_2 = drop_feature(x, drop_feature_rate_2)
-    z1 = model(x_1, edge_index_1)
-    z2 = model(x_2, edge_index_2)
+    # edge_index_1 = dropout_adj(edge_index, p=drop_edge_rate_1)[0]
+    # edge_index_2 = dropout_adj(edge_index, p=drop_edge_rate_2)[0]
+    # x_1 = drop_feature(x, drop_feature_rate_1)
+    # x_2 = drop_feature(x, drop_feature_rate_2)
+    if args.ssl == 'GRACE':
+        edge_index_1, edge_index_2, x_1, x_2 = augment_GRACE(config, x, edge_index)
+        if config['add_self_loops']:
+            edge_index_1 = add_self_loops(edge_index_1)[0]
+            edge_index_2 = add_self_loops(edge_index_2)[0]
+        z1 = model(x_1, edge_index_1)
+        z2 = model(x_2, edge_index_2)
+        loss = model.loss(z1, z2, batch_size=0)
+    elif args.ssl == 'CCA-SSG':
+        edge_index_1, x_1 = augment_CCA(config, x, edge_index)
+        edge_index_2, x_2 = augment_CCA(config, x, edge_index)
+        if config['add_self_loops']:
+            edge_index_1 = add_self_loops(edge_index_1)[0]
+            edge_index_2 = add_self_loops(edge_index_2)[0]
+        z1, z2 = model(edge_index_1, x_1, edge_index_2, x_2)
+        loss = model.loss(z1, z2, n_nodes, config['lambd'])
 
-    loss = model.loss(z1, z2, batch_size=0)
+
+    
     loss.backward()
     optimizer.step()
 
@@ -50,17 +66,19 @@ def train(model: Model, x, edge_index):
 
 def test(args, dataset, data, model: Model, x, edge_index, y, final=False):
     model.eval()
-    z = model(x, edge_index)
+    if args.ssl == 'GRACE':
+        z = model(x, edge_index)
+    elif args.ssl == 'CCA-SSG':
+        z = model.get_embedding(x, edge_index)
 
     # if args.split == 'imbalance'
     if args.balanced:
         if args.balance_type == 'mean_cls':
-            balanced_data = balance_embedding_mean_cls(dataset, data, model, n_cls, metric=args.similarity_metric)
+            balanced_data = balance_embedding_mean_cls(dataset, data, z, n_cls, metric=args.similarity_metric)
             data = balanced_data
         elif args.balance_type == 'assign':
-            balanced_data = balance_embedding_assign(dataset, data, model, n_cls, metric=args.similarity_metric)
+            balanced_data = balance_embedding_assign(dataset, data, z, n_cls, metric=args.similarity_metric)
             data = balanced_data
-
 
     # data = balanced_data
     
@@ -105,8 +123,8 @@ def test(args, dataset, data, model: Model, x, edge_index, y, final=False):
                 acc_val = f1_score(y_val, val_preds, average='micro')
                 f1_val      = f1_score(y_val, val_preds, average='macro')
                 bacc_val    = balanced_accuracy_score(y_val, val_preds)
-                acc_test = f1_score(y_test, test_preds, average='micro')
-                f1_test   = f1_score(y_test, test_preds, average='macro')
+                acc_test    = f1_score(y_test, test_preds, average='micro')
+                f1_test     = f1_score(y_test, test_preds, average='macro')
                 bacc_test    = balanced_accuracy_score(y_test, test_preds)
                 if f1_val >= best_val_f1:
                     best_val_epoch = e
@@ -127,27 +145,14 @@ if __name__ == '__main__':
     assert args.gpu_id in range(0, 8)
     torch.cuda.set_device(args.gpu_id)
 
-    config = yaml.load(open(osp.join('configs', 'GRACE.yaml')), Loader=SafeLoader)[args.dataset]
+    config = yaml.load(open(osp.join('configs', f'{args.ssl}.yaml')), Loader=SafeLoader)[args.dataset]
 
     torch.manual_seed(config['seed'])
     random.seed(12345)
 
-    learning_rate = config['learning_rate']
-    num_hidden = config['hid_dim']
-    num_proj_hidden = config['proj_hidden_dim']
-    activation = ({'relu': F.relu, 'prelu': nn.PReLU()})[config['activation']]
-    base_model = ({'GCNConv': GCNConv})[config['base_model']]
-    num_layers = config['num_layers']
 
-    drop_edge_rate_1 = config['drop_edge_rate_1']
-    drop_edge_rate_2 = config['drop_edge_rate_2']
-    drop_feature_rate_1 = config['drop_feature_rate_1']
-    drop_feature_rate_2 = config['drop_feature_rate_2']
-    tau = config['tau']
     num_epochs = config['num_epochs']
-    weight_decay = config['weight_decay']
 
-    # fix_minority = config['fix_minority']
 
     path = osp.join('datasets', args.dataset)
     dataset = get_dataset(path, args.dataset, args.split, args.imb_ratio, args.fix_minority)
@@ -157,12 +162,14 @@ if __name__ == '__main__':
 
     # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     data = data.cuda()
-
-    encoder = Encoder(dataset.num_features, num_hidden, activation,
-                      base_model=base_model, k=num_layers).cuda()
-    model = Model(encoder, num_hidden, num_proj_hidden, tau).cuda()
+    if args.ssl == 'GRACE':
+        encoder = Encoder(dataset.num_features, config['hid_dim'], activation=({'relu': F.relu, 'prelu': nn.PReLU()})[config['activation']],
+                        base_model=({'GCNConv': GCNConv})[config['base_model']], k=config['num_layers']).cuda()
+        model = Model(encoder, config['proj_hidden_dim'], config['proj_hidden_dim'], config['tau']).cuda()
+    elif args.ssl == 'CCA-SSG':
+        model = CCA_SSG(dataset.num_features, config['hid_dim'], config['out_dim'], n_layers=config['num_layers'], use_mlp=config['use_mlp']).cuda()
     optimizer = torch.optim.Adam(
-        model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+        model.parameters(), lr=config['learning_rate'], weight_decay=config['weight_decay'])
 
     start = t()
     prev = start

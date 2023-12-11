@@ -27,7 +27,7 @@ def compute_distances(A, B):
     distances = np.sqrt(norm_A + norm_B - 2 * np.dot(A, B.T))
     return distances
 
-def balance_embedding_mean_cls(dataset, data, model, n_cls, metric = 'inner_product'):  
+def balance_embedding_mean_cls(dataset, data, z, n_cls, metric = 'inner_product'):  
     """
     距离小类训练集均值 inner product 最近的节点作为新的训练集
     """
@@ -39,7 +39,7 @@ def balance_embedding_mean_cls(dataset, data, model, n_cls, metric = 'inner_prod
     max_num = max(imb_cls_num_list)
     upsamples = np.array(max_num - np.array(imb_cls_num_list)) # [ 0  0  0  0 18 18 18]
     # upsamples = [0,0,0,0,20,20,20]
-    z = model(x, edge_index).detach().cpu()
+    z = z.detach().cpu()
     train_cls_mean = scatter_mean(z[imb_train_mask], imb_train_idx, dim = 0).numpy()
     Z = z.detach().cpu().numpy()
 
@@ -75,7 +75,7 @@ def balance_embedding_mean_cls(dataset, data, model, n_cls, metric = 'inner_prod
     return balanced_data
 
 
-def balance_embedding_assign(dataset, data, model, n_cls, metric = 'inner_product'):  
+def balance_embedding_assign(dataset, data, z, n_cls, metric = 'inner_product'):  
     """
     每个小类训练集节点周围取新的training nodes
     """
@@ -88,7 +88,7 @@ def balance_embedding_assign(dataset, data, model, n_cls, metric = 'inner_produc
     max_num = max(imb_cls_num_list)
     upsamples = np.array(max_num - np.array(imb_cls_num_list)) # [ 0  0  0  0 18 18 18]
     # upsamples = [0,0,0,0,20,20,20]
-    z = model(x, edge_index).detach().cpu()
+    z = z.detach().cpu()
     
     # 
     minority_nodes = imb_train_idx[imb_train_labels > dataset.imb_cls_num].numpy()  # [ 1,  2, 20, 23, 26, 37]

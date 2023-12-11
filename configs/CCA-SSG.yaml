@@ -1,0 +1,23 @@
+Cora:
+  seed: 45974
+  add_self_loops: True
+  num_epochs: 50
+  num_layers: 2
+  learning_rate: 0.001
+  lr2: 0.01
+  weight_decay: 0
+  wd2: 0.0001
+  lambd: 0.001
+  num_layers: 2
+  der: 0.1
+  dfr: 0.4
+  hid_dim: 512
+  out_dim: 512
+  use_mlp: False
+  BalanceMLP:
+    epochs: 400
+    lr: 0.01
+    weight_decay: 0
+    dropout: 0.5
+    num_proj_layers: 1
+    proj_hid_dim: 64

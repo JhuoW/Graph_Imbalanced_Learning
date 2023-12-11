@@ -6,6 +6,7 @@ def parse_args():
     parser.add_argument('--dataset', type=str, default='Cora')
     parser.add_argument('--gpu_id', type=int, default=0)
     parser.add_argument('--split', type = str, default='imbalance')  # imbalance, public, random
+    parser.add_argument('--ssl', type = str, default='GRACE')  # GRACE CCA-SSG
     parser.add_argument('--balanced',  type=bool, default= True)
     # parser.add_argument('--config', type=str, default='configs/config.yaml')
     parser.add_argument('--imb_ratio', type = int, default=10)
