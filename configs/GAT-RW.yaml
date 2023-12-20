@@ -1,0 +1,62 @@
+Cora:
+  epochs: 800
+  num_layers: 2
+  feat_norm: False
+  add_self_loops: True
+  hid_dim: 256
+  dropout: 0.5
+  learning_rate: 0.01
+  weight_decay: 0.00005
+  proj: False
+  monitor: f1
+  patience: 300
+  head: 8
+# acc: [0.713, 0.713, 0.692, 0.642, 0.671, 0.734, 0.701, 0.67, 0.708, 0.716]
+# acc: avg / std = 0.6960 / 0.0275
+# f1: [0.6625, 0.6637, 0.6624, 0.624, 0.6105, 0.667, 0.6574, 0.6374, 0.6481, 0.6699]
+# f1: avg / std = 0.6503 / 0.0201
+# bacc: [0.6546, 0.6632, 0.6818, 0.6586, 0.634, 0.6627, 0.6589, 0.6523, 0.6593, 0.6788]
+# bacc: avg / std = 0.6604 / 0.0134
+
+
+CiteSeer:
+  epochs: 800
+  num_layers: 2
+  feat_norm: False
+  add_self_loops: True
+  hid_dim: 256
+  dropout: 0.5
+  learning_rate: 0.01
+  weight_decay: 0.00005
+  proj: False
+  monitor: f1
+  patience: 300
+  head: 8
+# acc: [0.432, 0.57, 0.388, 0.423, 0.463, 0.468, 0.404, 0.381, 0.474, 0.555]
+# acc: avg / std = 0.4558 / 0.0649
+# f1: [0.3888, 0.5464, 0.3356, 0.3918, 0.4259, 0.438, 0.3799, 0.315, 0.4476, 0.4936]
+# f1: avg / std = 0.4163 / 0.0698
+# bacc: [0.4508, 0.5541, 0.402, 0.4244, 0.4751, 0.4938, 0.4234, 0.3759, 0.4883, 0.5147]
+# bacc: avg / std = 0.4603 / 0.0549
+
+
+PubMed:
+  epochs: 800
+  num_layers: 2
+  feat_norm: False
+  add_self_loops: True
+  hid_dim: 256
+  dropout: 0.5
+  learning_rate: 0.01
+  weight_decay: 0.00005
+  proj: False
+  monitor: f1
+  patience: 300
+  head: 8
+
+# acc: [0.714, 0.662, 0.71, 0.745, 0.713, 0.619, 0.712, 0.764, 0.648, 0.744]
+# acc: avg / std = 0.7031 / 0.0463
+# f1: [0.7027, 0.6538, 0.7102, 0.7449, 0.7162, 0.6151, 0.7153, 0.7612, 0.6433, 0.7423]
+# f1: avg / std = 0.7005 / 0.0480
+# bacc: [0.7385, 0.6889, 0.7189, 0.7503, 0.731, 0.6519, 0.7118, 0.7629, 0.6915, 0.7604]
+# bacc: avg / std = 0.7206 / 0.0355

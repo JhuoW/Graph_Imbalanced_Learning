@@ -1,0 +1,41 @@
+BalanceMLP:
+  dropout: 0.5
+  epochs: 2000
+  lr: 0.01
+  num_proj_layers: 1
+  proj_hid_dim: 64
+  weight_decay: 5.0e-06
+GAT:
+  add_self_loops: false
+  dropout: 0.5
+  head: 8
+  hid_dim: 64
+  num_layers: 2
+activation: relu
+add_self_loops: false
+balance_type: assign
+balanced: true
+base_model: GCNConv
+clf: mlp
+dataset: PubMed
+drop_edge_rate_1: 0.4
+drop_edge_rate_2: 0.1
+drop_feature_rate_1: 0.0
+drop_feature_rate_2: 0.2
+fix_minority: true
+gnn: GCN
+gpu_id: 0
+hid_dim: 256
+imb_ratio: 10
+learning_rate: 0.001
+multirun: 10
+num_epochs: 1500
+num_layers: 2
+proj_hidden_dim: 256
+seed: 23344
+similarity_metric: inner_product
+split: imbalance
+ssl: GRACE
+tau: 0.7
+use_seed: true
+weight_decay: 1.0e-05

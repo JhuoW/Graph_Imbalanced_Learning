@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.nn import GCNConv
+from torch_geometric.nn import GCNConv, GATConv
 
 
 class LogReg(nn.Module):
@@ -44,6 +44,38 @@ class Encoder(torch.nn.Module):
             x = self.activation(self.conv[i](x, edge_index))
         return x
 
+class GATEncoder(nn.Module):
+    def __init__(self, config, in_channels: int, hid_channels: int):
+        super().__init__()
+        self.convs = nn.ModuleList()
+        self.add_self_loops = config['GAT']['add_self_loops']
+        self.head = config['GAT']['head']
+        self.dropout = config['GAT']['dropout']
+        self.n_layers = config['GAT']['num_layers']
+        self.convs.append(GATConv(in_channels = in_channels,
+                                  out_channels = hid_channels // self.head,
+                                  heads = self.head,
+                                  dropout = self.dropout,
+                                  add_self_loops = self.add_self_loops))
+        for l in range(1, self.n_layers-1):
+            # due to multi-head, the in_dim = num_hidden * n_heads
+            self.convs.append(GATConv(in_channels = hid_channels, 
+                                      out_channels=hid_channels// self.head, 
+                                      heads=self.head,
+                                      dropout = self.dropout,
+                                      add_self_loops= self.add_self_loops))
+        self.convs.append(GATConv(in_channels = hid_channels,
+                                  out_channels = hid_channels,
+                                  heads = 1,
+                                  dropout = self.dropout))        
+
+    def forward(self, x: torch.Tensor, edge_index: torch.Tensor):
+        h = x
+        for i in range(self.n_layers-1):
+            h = F.elu(self.convs[i](h, edge_index))
+            h = F.dropout(h, p=self.dropout, training=self.training)
+        h = self.convs[-1](h, edge_index)
+        return h
 
 class Model(torch.nn.Module):
     def __init__(self, encoder: Encoder, num_hidden: int, num_proj_hidden: int,

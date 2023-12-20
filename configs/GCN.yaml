@@ -1,10 +1,51 @@
+# Test acc = 0.6320, f1 = 0.5192, bacc = 0.5590
 Cora:
-  epochs: 3000
+  epochs: 2000
+  add_self_loops: False
+  feat_norm: False
+  num_layers: 2
+  hid_dim: 256
+  dropout: 0.5
+  learning_rate: 0.01
+  weight_decay: 0.0005
+  proj: False
+  monitor: f1
+  patience: 300
+
+
+CiteSeer:
+  epochs: 300
+  add_self_loops: False
+  feat_norm: False
   num_layers: 2
   hid_dim: 128
   dropout: 0.5
   learning_rate: 0.01
-  weight_decay: 0.0001
+  weight_decay: 0.00005
   proj: False
   monitor: f1
   patience: 300
+
+
+
+PubMed:
+  epochs: 800
+  add_self_loops: False
+  feat_norm: False
+  num_layers: 2
+  hid_dim: 512
+  dropout: 0.5
+  learning_rate: 0.01
+  weight_decay: 0.00005
+  proj: False
+  monitor: f1
+  patience: 300
+
+# GCN on PubMed
+# Test acc = 0.6360, f1 = 0.6132, bacc = 0.6838, acc_score = 0.6360
+# acc: [0.602, 0.574, 0.551, 0.573, 0.587, 0.552, 0.66, 0.64, 0.593, 0.636]
+# acc: avg / std = 0.5968 / 0.0376
+# f1: [0.5536, 0.5091, 0.4663, 0.501, 0.5347, 0.4679, 0.6389, 0.6082, 0.5364, 0.6132]
+# f1: avg / std = 0.5429 / 0.0606
+# bacc: [0.6589, 0.636, 0.6161, 0.632, 0.6373, 0.6148, 0.7013, 0.6901, 0.6537, 0.6838]
+# bacc: avg / std = 0.6524 / 0.0307

@@ -1,0 +1,33 @@
+BalanceMLP:
+  dropout: 0.5
+  epochs: 400
+  lr: 0.01
+  num_proj_layers: 1
+  proj_hid_dim: 64
+  weight_decay: 0
+activation: relu
+add_self_loops: false
+balance_type: assign
+balanced: true
+base_model: GCNConv
+clf: mlp
+dataset: Cora
+drop_edge_rate_1: 0.2
+drop_edge_rate_2: 0.4
+drop_feature_rate_1: 0.3
+drop_feature_rate_2: 0.4
+fix_minority: true
+gpu_id: 0
+hid_dim: 128
+imb_ratio: 10
+learning_rate: 0.0005
+multirun: 10
+num_epochs: 200
+num_layers: 2
+proj_hidden_dim: 128
+seed: 39788
+similarity_metric: inner_product
+split: imbalance
+ssl: GRACE
+tau: 0.4
+weight_decay: 1.0e-05

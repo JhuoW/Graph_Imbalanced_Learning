@@ -1,4 +1,5 @@
 Cora:
+  use_seed: True
   add_self_loops: False
   seed: 39788
   learning_rate: 0.0005
@@ -24,7 +25,9 @@ Cora:
     proj_hid_dim: 64
 
 
-CiteSeer:
+CiteSeer:  # acc: avg / std = 0.5529 / 0.0470  f1: avg / std = 0.5379 / 0.0513    bacc: avg / std = 0.5603 / 0.0420
+  use_seed: True
+  add_self_loops: False
   seed: 38108
   learning_rate: 0.001
   hid_dim: 256
@@ -39,7 +42,49 @@ CiteSeer:
   tau: 0.9
   num_epochs: 200
   weight_decay: 0.00001
+  GAT:
+    head: 8
+    num_layers: 2
+    hid_dim: 64
+    add_self_loops: False
+    dropout: 0.5
+  BalanceMLP:
+    epochs: 2000
+    lr: 0.01
+    weight_decay: 0.000005
+    dropout: 0.5
+    num_proj_layers: 1
+    proj_hid_dim: 64
+# CiteSeer:
+#   use_seed: False
+#   add_self_loops: False
+#   seed: 38108
+#   learning_rate: 0.001
+#   hid_dim: 512
+#   proj_hidden_dim: 512
+#   activation: 'prelu'
+#   base_model: 'GCNConv'
+#   num_layers: 2
+#   drop_edge_rate_1: 0.3
+#   drop_edge_rate_2: 0.3
+#   drop_feature_rate_1: 0.3
+#   drop_feature_rate_2: 0.3
+#   tau: 0.4
+#   num_epochs: 100
+#   weight_decay: 0.00001
+#   BalanceMLP:
+#     epochs: 2000
+#     lr: 0.01
+#     weight_decay: 0.000005
+#     dropout: 0.5
+#     num_proj_layers: 1
+#     proj_hid_dim: 64
+
+
+
 PubMed:
+  use_seed: True
+  add_self_loops: False
   seed: 23344
   learning_rate: 0.001
   hid_dim: 256
@@ -54,6 +99,20 @@ PubMed:
   tau: 0.7
   num_epochs: 1500
   weight_decay: 0.00001
+  GAT:
+    head: 8
+    num_layers: 2
+    hid_dim: 64
+    add_self_loops: False
+    dropout: 0.5
+  BalanceMLP:
+    epochs: 2000
+    lr: 0.01
+    weight_decay: 0.000005
+    dropout: 0.5
+    num_proj_layers: 1
+    proj_hid_dim: 64
+
 DBLP:
   seed: 83521
   learning_rate: 0.001

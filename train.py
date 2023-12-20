@@ -1,8 +1,8 @@
-import argparse
 import os.path as osp
 import random
 from time import perf_counter as t
 import yaml
+import sys
 from yaml import SafeLoader
 from args import parse_args
 from tqdm import tqdm
@@ -13,14 +13,20 @@ import torch.nn as nn
 from torch_geometric.datasets import CitationFull
 from torch_geometric.nn import GCNConv
 from dataset import *
-from SSL.GRACE import Encoder, Model
+from SSL.GRACE import Encoder, Model, GATEncoder
 from SSL.CCASSG import CCA_SSG
 from eval import label_classification
 from torch_geometric.utils import add_self_loops
 import numpy as np
-from balance import balance_embedding_mean_cls, balance_embedding_assign, BalanceMLP
+from balance import balance_embedding_mean_cls, balance_embedding_assign, BalanceMLP, balance_embedding_structure
 from sklearn.metrics import f1_score, balanced_accuracy_score
 from aug import augment_GRACE, augment_CCA
+import datetime
+from utils.utils import *
+import pathlib
+from utils.logger import Logger
+
+METRIC_NAME = ['acc', 'f1', 'bacc']
 
 def get_dataset(path, name, split, imb_ratio, fix_minority):
     assert name in ['Cora', 'CiteSeer', 'PubMed', 'DBLP']
@@ -30,7 +36,7 @@ def get_dataset(path, name, split, imb_ratio, fix_minority):
     else:
         dataset = Planetoid(path, name, split=split, imb_ratio= imb_ratio, fix_minority= fix_minority, transform = T.NormalizeFeatures())
 
-    return dataset 
+    return dataset
 
 def train(model, x, edge_index):
     model.train()
@@ -63,7 +69,6 @@ def train(model, x, edge_index):
 
     return loss.item()
 
-
 def test(args, dataset, data, model: Model, x, edge_index, y, final=False):
     model.eval()
     if args.ssl == 'GRACE':
@@ -72,12 +77,15 @@ def test(args, dataset, data, model: Model, x, edge_index, y, final=False):
         z = model.get_embedding(x, edge_index)
 
     # if args.split == 'imbalance'
-    if args.balanced:
+    if args.balanced and args.split == 'imbalance':
         if args.balance_type == 'mean_cls':
             balanced_data = balance_embedding_mean_cls(dataset, data, z, n_cls, metric=args.similarity_metric)
             data = balanced_data
         elif args.balance_type == 'assign':
             balanced_data = balance_embedding_assign(dataset, data, z, n_cls, metric=args.similarity_metric)
+            data = balanced_data
+        elif args.balance_type == 'structure':
+            balance_data = balance_embedding_structure(dataset, data, z, n_cls, metric=args.similarity_metric)
             data = balanced_data
 
     # data = balanced_data
@@ -92,11 +100,15 @@ def test(args, dataset, data, model: Model, x, edge_index, y, final=False):
         optimizer_mlp = torch.optim.Adam(balanced_mlp.parameters(), lr=config['BalanceMLP']['lr'], weight_decay=config['BalanceMLP']['weight_decay'])
         loss_func_mlp = nn.CrossEntropyLoss()
         t =  tqdm(range(config['BalanceMLP']['epochs']), bar_format='{l_bar}{bar:10}{r_bar}{bar:-10b}')
-        train_mask = data.imb_train_mask
+        if args.split == 'imbalance':
+            train_mask = data.imb_train_mask
+        elif args.split == 'public':
+            train_mask = data.train_mask
+            data.new_y = data.y
         new_y = data.new_y
         y     = data.y
         best_val_f1 = 0
-        best_test_acc, best_test_f1,best_test_bacc= 0,0,0
+        best_test_acc, best_test_f1,best_test_bacc= 0, 0, 0
         best_val_epoch = -1
         for e in t:
             balanced_mlp.train()
@@ -105,7 +117,7 @@ def test(args, dataset, data, model: Model, x, edge_index, y, final=False):
             new_y = new_y.cuda()
             train_mask = train_mask.cuda()
             logits = balanced_mlp(x)
-            loss_mlp = loss_func_mlp(logits[train_mask], new_y[train_mask])
+            loss_mlp = loss_func_mlp(logits[train_mask], new_y[train_mask])  # 利用伪训练集标签训练分类器
             loss_mlp.backward()
             optimizer_mlp.step()
             with torch.no_grad():
@@ -137,17 +149,21 @@ def test(args, dataset, data, model: Model, x, edge_index, y, final=False):
             )
             t.set_postfix_str(postfix_str)
         print("[Test Acc] %.4f [Test F1] %.4f [Test bacc] %.4f" % (best_test_acc, best_test_f1, best_test_bacc)) 
-
+        return best_test_acc, best_test_f1, best_test_bacc
 
 if __name__ == '__main__':
     args = parse_args()
-
+    logger          = Logger(mode = [print])  
+    logger.add_line = lambda : logger.log("-" * 50)
+    logger.log(" ".join(sys.argv))
+    start_wall_time = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     assert args.gpu_id in range(0, 8)
     torch.cuda.set_device(args.gpu_id)
 
     config = yaml.load(open(osp.join('configs', f'{args.ssl}.yaml')), Loader=SafeLoader)[args.dataset]
-
-    torch.manual_seed(config['seed'])
+    
+    if config['use_seed']:
+        torch.manual_seed(config['seed'])
     random.seed(12345)
 
 
@@ -163,8 +179,11 @@ if __name__ == '__main__':
     # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     data = data.cuda()
     if args.ssl == 'GRACE':
-        encoder = Encoder(dataset.num_features, config['hid_dim'], activation=({'relu': F.relu, 'prelu': nn.PReLU()})[config['activation']],
-                        base_model=({'GCNConv': GCNConv})[config['base_model']], k=config['num_layers']).cuda()
+        if args.gnn == 'GCN':
+            encoder = Encoder(dataset.num_features, config['hid_dim'], activation=({'relu': F.relu, 'prelu': nn.PReLU()})[config['activation']],
+                            base_model=({'GCNConv': GCNConv})[config['base_model']], k=config['num_layers']).cuda()
+        elif args.gnn == 'GAT':
+            encoder = GATEncoder(config, dataset.num_features, config['hid_dim']).cuda()
         model = Model(encoder, config['proj_hidden_dim'], config['proj_hidden_dim'], config['tau']).cuda()
     elif args.ssl == 'CCA-SSG':
         model = CCA_SSG(dataset.num_features, config['hid_dim'], config['out_dim'], n_layers=config['num_layers'], use_mlp=config['use_mlp']).cuda()
@@ -182,7 +201,68 @@ if __name__ == '__main__':
         prev = now
 
     print("=== Final ===")
-    test(args, dataset, data, model, data.x, data.edge_index, data.y, final=True)
+    print("saving configs...")
+    # save configs
+    config_args = args2config(args, config)
+    log_dir = osp.join('logs', args.dataset, start_wall_time, f'imb_ratio_{args.imb_ratio}')
+    pathlib.Path(log_dir).mkdir(parents=True, exist_ok=True)
+    config_save_file = osp.join(log_dir, '{}.yaml'.format(args.dataset))
+    with open(config_save_file, 'w+') as f:
+        yaml.dump(config_args, f, sort_keys=True, indent = 2)    
+
+    print("saving model and results...")
+    test_result_file = osp.join(log_dir, 'results.txt')
+    test_accs, test_f1s, test_baccs = [],[],[]
+    for r in range(args.multirun):
+        if args.split == 'imbalance':
+            imb_train_masks = data.imb_train_masks
+            imb_train_mask = imb_train_masks[r]
+            data.imb_train_mask = imb_train_mask
+        best_test_acc, best_test_f1, best_test_bacc = test(args, dataset, data, model, data.x, data.edge_index, data.y, final=True)
+        test_accs.append(best_test_acc)
+        test_f1s.append(best_test_f1)
+        test_baccs.append(best_test_bacc)
+    
+    acc_list = np.around(test_accs, decimals=5)
+    acc_avg = np.mean(acc_list, axis=0)
+    acc_std = np.std(acc_list, axis=0, ddof=1)
+        
+    f1_list = np.around(test_f1s, decimals=5)
+    f1_avg = np.mean(f1_list, axis=0)
+    f1_std = np.std(f1_list, axis=0, ddof=1)
+
+    bacc_list = np.around(test_baccs, decimals=5)
+    bacc_avg = np.mean(bacc_list, axis=0)
+    bacc_std = np.std(bacc_list, axis=0, ddof=1)
+
+    
+    lists = [acc_list,f1_list,bacc_list]
+    avgs = [acc_avg, f1_avg, bacc_avg]
+    stds = [acc_std, f1_std, bacc_std]
+    f = open(test_result_file, 'w')
+    for i, (avg, std) in enumerate(zip(avgs, stds)):
+        logger.log("%s: %s" % (METRIC_NAME[i]  , str([round(x,4) for x in lists[i]])))
+        logger.log("%s: avg / std = %.4f / %.4f" % (METRIC_NAME[i] , avgs[i] , stds[i]))
+
+        f.write("%s: %s" % (METRIC_NAME[i]  , str([round(x,4) for x in lists[i]])))
+        f.write("\n")
+        f.write("%s: avg / std = %.4f / %.4f" % (METRIC_NAME[i] , avgs[i] , stds[i]))
+        f.write("\n")
+    f.close()
+
+    # with open(test_result_file, 'w') as f:
+    #     f.write("%s: %s" % ('acc'  , str([round(x,4) for x in acc_list])))
+    #     f.write("%s: avg / std = %.4f / %.4f" % ('acc' , acc_avg , acc_std))
+    #     f.write("\n")
+
+    #     f.write("%s: %s" % ('f1'  , str([round(x,4) for x in f1_list])))
+    #     f.write("%s: avg / std = %.4f / %.4f" % ('f1' , f1_avg , f1_std))
+    #     f.write("\n")     
+
+    #     f.write("%s: %s" % ('bacc'  , str([round(x,4) for x in bacc_list])))
+    #     f.write("%s: avg / std = %.4f / %.4f" % ('bacc' , bacc_avg , bacc_std))
+    #     f.write("\n")  
+    # f.close()
 
 # Imbalanced Grace: Acc=0.7000+-0.0000, Macro-F1=0.6306+-0.0000, BAcc=0.6498+-0.0000
 # Balanced Grace: Acc=0.8200+-0.0000, Macro-F1=0.8084+-0.0000, BAcc=0.8267+-0.0000

@@ -1,0 +1,33 @@
+BalanceMLP:
+  dropout: 0.5
+  epochs: 3000
+  lr: 0.01
+  num_proj_layers: 1
+  proj_hid_dim: 64
+  weight_decay: 0.01
+add_self_loops: true
+balance_type: assign
+balanced: true
+clf: mlp
+dataset: PubMed
+der: 0.5
+dfr: 0.3
+fix_minority: true
+gnn: GCN
+gpu_id: 0
+hid_dim: 512
+imb_ratio: 10
+lambd: 0.001
+learning_rate: 0.001
+lr2: 0.01
+multirun: 10
+num_epochs: 100
+num_layers: 2
+out_dim: 512
+similarity_metric: inner_product
+split: imbalance
+ssl: CCA-SSG
+use_mlp: false
+use_seed: false
+wd2: 0.0001
+weight_decay: 0

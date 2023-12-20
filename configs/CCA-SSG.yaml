@@ -1,4 +1,5 @@
 Cora:
+  use_seed: False
   seed: 45974
   add_self_loops: True
   num_epochs: 50
@@ -21,3 +22,50 @@ Cora:
     dropout: 0.5
     num_proj_layers: 1
     proj_hid_dim: 64
+
+
+CiteSeer:
+  use_seed: False
+  add_self_loops: True
+  num_epochs: 20
+  num_layers: 1
+  learning_rate: 0.001
+  lr2: 0.01
+  weight_decay: 0
+  wd2: 0.01
+  lambd: 0.0005
+  der: 0.4
+  dfr: 0.0
+  hid_dim: 512
+  out_dim: 512
+  use_mlp: False
+  BalanceMLP:
+    epochs: 3000
+    lr: 0.01
+    weight_decay: 0.01
+    dropout: 0.5
+    num_proj_layers: 1
+    proj_hid_dim: 64
+  
+PubMed:
+  use_seed: False
+  add_self_loops: True
+  num_epochs: 100
+  num_layers: 2
+  learning_rate: 0.001
+  lr2: 0.01
+  weight_decay: 0
+  wd2: 0.0001
+  lambd: 0.001
+  der: 0.5
+  dfr: 0.3
+  hid_dim: 512
+  out_dim: 512
+  use_mlp: False
+  BalanceMLP:
+    epochs: 3000
+    lr: 0.01
+    weight_decay: 0.01
+    dropout: 0.5
+    num_proj_layers: 1
+    proj_hid_dim: 64  

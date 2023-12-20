@@ -71,6 +71,10 @@ class Planetoid(InMemoryDataset):
                     imb_cls_num_list.append(num_train_nodes_per_cls[i])            
             imb_train_mask, imb_nodes_per_cls = self.get_imb_trainset(data, n_cls, data.num_nodes, train_nodes_per_cls,num_train_nodes_per_cls, imb_cls_num_list, fix_minority)
             data.imb_train_mask = imb_train_mask
+            if osp.exists(osp.join(self.processed_dir, name + '_' + str(imb_ratio) + '.pt')):
+                 print('Using Existing Training Masks')
+                 imb_train_masks = torch.load(osp.join(self.processed_dir, name + '_' + str(imb_ratio) + '.pt'))
+            data.imb_train_masks = imb_train_masks
             self.imb_cls_num_list = imb_cls_num_list
             self.data, self.slices = self.collate([data])
                 
