@@ -6,10 +6,10 @@ import argparse
 def parse_args():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--dataset', type=str, default='CiteSeer')
+    parser.add_argument('--dataset', type=str, default='Cora')
     parser.add_argument('--gpu_id', type=int, default=0)
     parser.add_argument('--split', type = str, default='imbalance')  # imbalance, public, random
-    parser.add_argument('--ssl', type = str, default='CCA-SSG')  # GRACE CCA-SSG
+    parser.add_argument('--ssl', type = str, default='GRACE')  # GRACE CCA-SSG
     parser.add_argument('--gnn', type = str, default='GCN')     # 
     parser.add_argument('--balanced',  type=bool, default= True)
     # parser.add_argument('--config', type=str, default='configs/config.yaml')

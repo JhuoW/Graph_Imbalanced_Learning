@@ -2,6 +2,8 @@ import torch
 from torch_geometric.utils import get_ppr
 from torch_geometric.data import Data
 import numpy as np
+import networkx as nx
+from scipy.linalg import fractional_matrix_power, inv
 
 def args2config(args, config:dict):
     args_ = vars(args)
@@ -35,3 +37,13 @@ def pc_softmax(logits, cls_num):
     spc = spc.unsqueeze(0).expand(logits.shape[0], -1)
     logits = logits - spc.log()
     return logits
+
+
+def compute_ppr(graph: nx.Graph, alpha=0.2, self_loop=True):
+    a = nx.convert_matrix.to_numpy_array(graph)
+    if self_loop:
+        a = a + np.eye(a.shape[0])                                # A^ = A + I_n
+    d = np.diag(np.sum(a, 1))                                     # D^ = Sigma A^_ii
+    dinv = fractional_matrix_power(d, -0.5)                       # D^(-1/2)
+    at = np.matmul(np.matmul(dinv, a), dinv)                      # A~ = D^(-1/2) x A^ x D^(-1/2)
+    return alpha * inv((np.eye(a.shape[0]) - (1 - alpha) * at))   # a(I_n-(1-a)A~)^-1

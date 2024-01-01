@@ -4,7 +4,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch_scatter import scatter_mean
-from torch_geometric.utils import get_ppr
+from torch_geometric.utils import get_ppr, to_networkx
+from utils.utils import compute_ppr
 
 def get_idx_info(data, n_cls):
     train_mask = data.train_mask
@@ -142,82 +143,6 @@ def balance_embedding_assign(dataset, data, z, n_cls, metric = 'inner_product'):
     #     a[label] = a.get(label, 0) + 1
     # print(a)
     return balanced_data
-
-
-def balance_embedding_structure(dataset, data, z, n_cls, metric = 'inner_product'):
-    # PPR matrix, Structure
-    x, edge_index = data.x, data.edge_index
-    imb_train_mask = data.imb_train_mask.detach().cpu()
-    imb_train_idx  = torch.LongTensor(torch.nonzero(imb_train_mask, as_tuple=True)[0])
-    imb_train_labels = data.y[imb_train_mask].detach().cpu()
-
-    imb_cls_num_list = dataset.imb_cls_num_list
-    max_num = max(imb_cls_num_list)
-    upsamples = np.array(max_num - np.array(imb_cls_num_list)) # [ 0  0  0  0 18 18 18]
-    # upsamples = [0,0,0,0,20,20,20]
-    z = z.detach().cpu()
-    
-    # 
-    minority_nodes = imb_train_idx[imb_train_labels > n_cls - 1 - dataset.imb_cls_num].numpy()  # [ 1,  2, 20, 23, 26, 37]
-    # print(minority_nodes)  # [ 1,  2, 20, 23, 26, 37]
-    # print(data.y[minority_nodes])  # [4, 4, 5, 6, 6, 5]
-    
-    minority_z     = z[minority_nodes]  # shape (6, 128)  embs of [ 1,  2, 20, 23, 26, 37]
-    Z = z.numpy()
-    if metric == 'inner_product':
-        minority_z_norm = minority_z / np.linalg.norm(minority_z, axis=1, ord=2, keepdims=True)
-        Z_norm = Z / np.linalg.norm(Z, axis=1, ord=2, keepdims=True) 
-        similarity     = minority_z_norm @ Z_norm.transpose()  # (6, 2708)
-    elif metric == 'euclidean':
-        similarity = compute_distances(minority_z, Z)
-    imb_train_idx = imb_train_idx.numpy()
-    similarity[:, imb_train_idx] = 0 
-
-    # tensor([[0.7741, 0.0000, 0.8531,  ..., 0.6025, 0.4046, 0.6016],
-    #     [0.3523, 0.0000, 0.6507,  ..., 0.2156, 0.4030, 0.2165],
-    #     [0.6787, 0.0000, 0.8503,  ..., 0.4647, 0.3259, 0.4898],
-    #     [0.2628, 0.0000, 0.6741,  ..., 0.1685, 0.7160, 0.6182]])
-    # print(similarity)
-
-    # Get PPR
-    ppr_ei, ppr_weight = get_ppr(data.edge_index.detach().cpu(), target=torch.from_numpy(minority_nodes))
-    print(ppr_ei)
-    print(ppr_weight)
-
-    minority_labels  = data.y[minority_nodes].detach().cpu().numpy()  # [4 4 5 6 6 5]
-    num_per_minority = {}   # 每个小类节点的样本量
-    for label in minority_labels:
-        num_per_minority[label] = num_per_minority.get(label, 0) + 1
-
-    num_upsample_per_node = {} # 每个类中每个节点要上采样的个数  {4: 9, 5:9, 6:9}
-    for i, upsample in enumerate(upsamples):
-        if i in num_per_minority.keys():
-            upspls_per_node = upsample // num_per_minority[i]
-            num_upsample_per_node[i] = upspls_per_node   
-
-    num_upsamples_per_node = np.array([num_upsample_per_node[label] for label in minority_labels])  # [9,9,9,9,9,9] 即similarity 每行选取的节点数
-    # print(num_upsamples_per_node.shape)
-    sorted_indices = np.argsort(-similarity, axis=1)  # (6, 2708)
-    new_train_nodes = []
-    balanced_data = data.clone()
-    new_y = balanced_data.y
-    for i in range(sorted_indices.shape[0]): # 6
-        new_train_nodes.extend(sorted_indices[i][: num_upsamples_per_node[i]].tolist())
-        # print(sorted_indices[i][: num_upsamples_per_node[i]].tolist())
-        new_y[sorted_indices[i][: num_upsamples_per_node[i]].tolist()] = minority_labels[i]
-
-    new_train_nodes = np.unique(np.array(new_train_nodes))
-    balanced_data.imb_train_mask[new_train_nodes] = True
-    
-    balanced_data.new_y = new_y 
-
-
-    # a = {} 
-
-    # for label in balanced_data.new_y[imb_train_mask].detach().cpu().numpy():
-    #     a[label] = a.get(label, 0) + 1
-    # print(a)
-    return balanced_data    
 
 
 

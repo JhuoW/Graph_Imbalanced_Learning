@@ -18,7 +18,7 @@ from SSL.CCASSG import CCA_SSG
 from eval import label_classification
 from torch_geometric.utils import add_self_loops
 import numpy as np
-from balance import balance_embedding_mean_cls, balance_embedding_assign, BalanceMLP, balance_embedding_structure
+from balance import balance_embedding_mean_cls, balance_embedding_assign, BalanceMLP
 from sklearn.metrics import f1_score, balanced_accuracy_score
 from aug import augment_GRACE, augment_CCA
 import datetime
@@ -83,9 +83,6 @@ def test(args, dataset, data, model: Model, x, edge_index, y, final=False):
             data = balanced_data
         elif args.balance_type == 'assign':
             balanced_data = balance_embedding_assign(dataset, data, z, n_cls, metric=args.similarity_metric)
-            data = balanced_data
-        elif args.balance_type == 'structure':
-            balance_data = balance_embedding_structure(dataset, data, z, n_cls, metric=args.similarity_metric)
             data = balanced_data
 
     # data = balanced_data
@@ -266,7 +263,7 @@ if __name__ == '__main__':
 
 # Imbalanced Grace: Acc=0.7000+-0.0000, Macro-F1=0.6306+-0.0000, BAcc=0.6498+-0.0000
 # Balanced Grace: Acc=0.8200+-0.0000, Macro-F1=0.8084+-0.0000, BAcc=0.8267+-0.0000
-# Acc=0.7290+-0.0000, Macro-F1=0.6743+-0.0000, BAcc=0.6803+-0.0000
+# Acc=0.7290+-0.0000, Macro-F1=0.6743+-0.0000, BAcc=0.6803+-0.0000 
 # (E) | label_classification: Acc=0.6950+-0.0000, Macro-F1=0.6518+-0.0000, BAcc=0.6689+-0.0000
 
 
