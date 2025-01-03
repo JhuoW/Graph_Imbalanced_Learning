@@ -76,6 +76,8 @@ def test(args, dataset, data, model: Model, x, edge_index, y, final=False):
     elif args.ssl == 'CCA-SSG':
         z = model.get_embedding(x, edge_index)
 
+    save_embeddings(z.detach().cpu(), path=osp.join('embeddings', args.dataset + '_' + args.ssl + '_' + args.gnn + '_' + str(args.imb_ratio) +'.pt'))
+
     # if args.split == 'imbalance'
     if args.balanced and args.split == 'imbalance':
         if args.balance_type == 'mean_cls':

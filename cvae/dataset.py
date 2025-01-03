@@ -21,7 +21,6 @@ class Planetoid(InMemoryDataset):
 
     def __init__(self, root: str, name: str, split: str = "public",   # split: public, imbalance, random
                  imb_ratio: int = 10, fix_minority: bool = True, 
-                 repeatition: int = 10,
                  num_train_per_class: int = 20, num_val: int = 500,
                  num_test: int = 1000, transform: Optional[Callable] = None,
                  pre_transform: Optional[Callable] = None):
@@ -58,33 +57,23 @@ class Planetoid(InMemoryDataset):
             data.test_mask[remaining[num_val:num_val + num_test]] = True
 
             self.data, self.slices = self.collate([data])
-        elif split == 'imbalance':  # here
+        elif split == 'imbalance':
             data = self.get(0)
             n_cls = self.num_classes
             self.imb_cls_num = n_cls // 2
-            imb_cls_num_list = []  # 存放每个类的训练节点数
-            # 每个类训练节点， 每个类训练节点数
+            imb_cls_num_list = []
             train_nodes_per_cls, num_train_nodes_per_cls = self.get_idx_info(data, n_cls)
-
             max_num = np.max(num_train_nodes_per_cls[:n_cls-self.imb_cls_num])
             for i in range(n_cls):
                 if imb_ratio > 1 and i > n_cls-1-self.imb_cls_num: # i>3: i = 4,5,6 set to imbalanced class
                     imb_cls_num_list.append(min(int(max_num*(1./imb_ratio)), num_train_nodes_per_cls[i]))
                 else:
-                    imb_cls_num_list.append(num_train_nodes_per_cls[i])           
+                    imb_cls_num_list.append(num_train_nodes_per_cls[i])            
+            imb_train_mask, imb_nodes_per_cls = self.get_imb_trainset(data, n_cls, data.num_nodes, train_nodes_per_cls,num_train_nodes_per_cls, imb_cls_num_list, fix_minority)
+            data.imb_train_mask = imb_train_mask
             if osp.exists(osp.join(self.processed_dir, name + '_' + str(imb_ratio) + '.pt')):
-                print('Using Existing Training Masks')
-                imb_train_mask, imb_nodes_per_cls = self.get_imb_trainset(data, n_cls, data.num_nodes, train_nodes_per_cls, num_train_nodes_per_cls, imb_cls_num_list, fix_minority)
-                data.imb_train_mask = imb_train_mask
-                imb_train_masks = torch.load(osp.join(self.processed_dir, name + '_' + str(imb_ratio) + '.pt'))
-            else:
-                imb_train_masks = []
-                for r in range(repeatition):
-                    imb_train_mask, imb_nodes_per_cls = self.get_imb_trainset(data, n_cls, data.num_nodes, train_nodes_per_cls, num_train_nodes_per_cls, imb_cls_num_list, False)
-                    imb_train_masks.append(imb_train_mask)
-                imb_train_masks = torch.stack(imb_train_masks).detach().cpu()
-                torch.save(imb_train_masks, f'datasets/{name}/{name}_{imb_ratio}.pt')
-
+                 print('Using Existing Training Masks')
+                 imb_train_masks = torch.load(osp.join(self.processed_dir, name + '_' + str(imb_ratio) + '.pt'))
             data.imb_train_masks = imb_train_masks
             self.imb_cls_num_list = imb_cls_num_list
             self.data, self.slices = self.collate([data])
@@ -116,23 +105,22 @@ class Planetoid(InMemoryDataset):
         labels = data.y
         index_list = torch.arange(labels.shape[0])  # all node indices
         train_nodes_per_cls = []
-        num_train_nodes_per_cls = []
+        num_train_nodes_per_cls     = []
         for i in range(n_cls):
             cls_indices = index_list[((labels == i) & train_mask)] # all nodes idx with label i
-            num_nodes_i = (labels[train_mask] == i).sum()  # num of nodes in class i
-            train_nodes_per_cls.append(cls_indices)     # training nodes in class i
-            num_train_nodes_per_cls.append(int(num_nodes_i.item()))  # num nodes in class i
+            num_nodes_i = (labels[train_mask] == i).sum()
+            train_nodes_per_cls.append(cls_indices)
+            num_train_nodes_per_cls.append(int(num_nodes_i.item()))
         return train_nodes_per_cls, num_train_nodes_per_cls
 
     def get_imb_trainset(self, data, n_cls, n_nodes, train_nodes_per_cls, num_train_nodes_per_cls, class_num_list, fix_minority = True):
         imb_train_mask = torch.zeros(n_nodes, dtype=torch.bool)
         imb_nodes_per_cls = []
         for i in range(n_cls):
-            if num_train_nodes_per_cls[i] > class_num_list[i]:  # 如果类i的训练节点数>采样的训练节点数
-                # 打乱类i的训练节点/固定
+            if num_train_nodes_per_cls[i] > class_num_list[i]:
                 cls_idx = torch.arange(train_nodes_per_cls[i].shape[0]) if fix_minority else torch.randperm(train_nodes_per_cls[i].shape[0])
-                cls_idx = train_nodes_per_cls[i][cls_idx] # 类i新的node idx排列
-                cls_idx = cls_idx[:class_num_list[i]]  # 采样对应数量的节点作为新训练集
+                cls_idx = train_nodes_per_cls[i][cls_idx]
+                cls_idx = cls_idx[:class_num_list[i]]
                 imb_nodes_per_cls.append(cls_idx)
             else:
                 imb_nodes_per_cls.append(train_nodes_per_cls[i])

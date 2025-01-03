@@ -47,3 +47,4 @@ def compute_ppr(graph: nx.Graph, alpha=0.2, self_loop=True):
     dinv = fractional_matrix_power(d, -0.5)                       # D^(-1/2)
     at = np.matmul(np.matmul(dinv, a), dinv)                      # A~ = D^(-1/2) x A^ x D^(-1/2)
     return alpha * inv((np.eye(a.shape[0]) - (1 - alpha) * at))   # a(I_n-(1-a)A~)^-1
+
